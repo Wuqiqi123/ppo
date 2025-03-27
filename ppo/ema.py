@@ -70,7 +70,7 @@ class EMA(nn.Module):
 
     @property
     def model(self):
-        return self.online_model if self.include_online_model else self.online_model[0]
+        return self.model[0]
 
     def inplace_copy(tgt, src):
         tgt.copy_(src)
