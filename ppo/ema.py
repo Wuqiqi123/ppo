@@ -78,20 +78,12 @@ class EMA(nn.Module):
     def inplace_lerp(tgt, src, decay):
         tgt.lerp_(src, 1.0 - decay)
 
-    def copy_params_from_model_to_ema(self):
-        for (_, ema_params), (_, current_params) in zip(self.get_params_iter(self.ema_model), self.get_params_iter(self.model)):
-            self.inplace_copy(ema_params.data, current_params.data)
-
-        for (_, ema_buffers), (_, current_buffers) in zip(self.get_buffers_iter(self.ema_model), self.get_buffers_iter(self.model)):
-            self.inplace_copy(ema_buffers.data, current_buffers.data)
-
-
-    def copy_params_from_ema_to_model(self):
-        for (_, ma_params), (_, current_params) in zip(self.get_params_iter(self.ema_model), self.get_params_iter(self.model)):
-            self.inplace_copy(current_params.data, ma_params.data)
-
-        for (_, ma_buffers), (_, current_buffers) in zip(self.get_buffers_iter(self.ema_model), self.get_buffers_iter(self.model)):
-            self.inplace_copy(current_buffers.data, ma_buffers.data)
+    def copy_params_from_source_to_target(self, source, target):
+        for (_, source_params), (_, target_params) in zip(self.get_params_iter(source), self.get_params_iter(target)):
+            self.inplace_copy(target_params.data, source_params.data)
+        
+        for (_, source_buffers), (_, target_buffers) in zip(self.get_buffers_iter(source), self.get_buffers_iter(target)):
+            self.inplace_copy(target_buffers.data, source_buffers.data)
 
     def update(self):
         step = self.step.item()
@@ -100,7 +92,7 @@ class EMA(nn.Module):
         should_update = step % self.update_every == 0
 
         if should_update and step <= self.update_after_step:
-            self.copy_params_from_model_to_ema()
+            self.copy_params_from_source_to_target(self.model, self.ema_model)
             return
 
         if should_update:
