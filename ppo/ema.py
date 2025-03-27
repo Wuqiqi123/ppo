@@ -10,10 +10,10 @@ class EMA(nn.Module):
     Update formula:
         ema_param = decay * ema_param + (1 - decay) * param
     """
-    def __init__(self, model, decay=0.9999, update_after_step = 100, update_every = 10, inv_gamma = 1.0, power = 2 / 3):
+    def __init__(self, online_model, decay=0.9999, update_after_step = 100, update_every = 10, inv_gamma = 1.0, power = 2 / 3):
         super(EMA, self).__init__()
         self.decay = decay
-        self.model = [model] ## hack for not saving the model in the state_dict
+        self.online_model = [online_model] ## hack for not saving the model in the state_dict
         self.update_after_step = update_after_step
         self.update_every = update_every
         self.inv_gamma = inv_gamma
@@ -70,12 +70,12 @@ class EMA(nn.Module):
 
     @property
     def model(self):
-        return self.model[0]
+        return self.online_model[0]
 
-    def inplace_copy(tgt, src):
+    def inplace_copy(self, tgt, src):
         tgt.copy_(src)
 
-    def inplace_lerp(tgt, src, decay):
+    def inplace_lerp(self, tgt, src, decay):
         tgt.lerp_(src, 1.0 - decay)
 
     def copy_params_from_source_to_target(self, source, target):
@@ -115,11 +115,3 @@ class EMA(nn.Module):
 
     def __call__(self, *args, **kwargs):
         return self.ema_model(*args, **kwargs)
-
-
-        
-
-        
-
-        
-

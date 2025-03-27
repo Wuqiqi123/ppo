@@ -47,13 +47,13 @@ def train(dataloader, model, loss_fn, optimizer):
 
 def test_EMA():
 
-    training_data = datasets.FashionMNIST(
+    training_data = datasets.MNIST(
         root="data",
         train=True,
         download=True,
         transform=ToTensor(),
     )
-    batch_size = 64
+    batch_size = 8
 
     # Create data loaders.
     train_dataloader = DataLoader(training_data, batch_size=batch_size)
@@ -62,17 +62,21 @@ def test_EMA():
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
 
-    ema = EMA(model, decay=0.9999, update_after_step=100, update_every=10, inv_gamma=1.0, power=2/3)
+    ema = EMA(model)
     ema.add_to_optimizer_post_step_hook(optimizer)
 
     epochs = 5
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         train(train_dataloader, model, loss_fn, optimizer)
-    
-
-    for name, param in model.named_parameters():
-        print(name, param.data[0])
+        
+    model.eval()
+    ema.eval()
+    image = training_data[0][0].unsqueeze(0).to(device)
+    label = training_data[0][1]
+    print("label: ", label)
+    print("model forward pass: ", model(image).argmax().item())
+    print("ema forward pass: ", ema(image).argmax().item())
 
 
 if __name__ == '__main__':
