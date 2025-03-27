@@ -13,7 +13,7 @@ class EMA(nn.Module):
     def __init__(self, model, decay=0.9999, update_after_step = 100, update_every = 10, inv_gamma = 1.0, power = 2 / 3):
         super(EMA, self).__init__()
         self.decay = decay
-        self.model = model
+        self.model = [model] ## hack for not saving the model in the state_dict
         self.update_after_step = update_after_step
         self.update_every = update_every
         self.inv_gamma = inv_gamma
@@ -68,6 +68,10 @@ class EMA(nn.Module):
                 continue
             yield name, buffer
 
+    @property
+    def model(self):
+        return self.online_model if self.include_online_model else self.online_model[0]
+
     def inplace_copy(tgt, src):
         tgt.copy_(src)
 
@@ -116,6 +120,9 @@ class EMA(nn.Module):
         if len(tensors_to_lerp) > 0:
             tgt_lerp, src_lerp = zip(*tensors_to_lerp)
             torch._foreach_lerp_(tgt_lerp, src_lerp, 1.0 - current_decay)
+
+    def __call__(self, *args, **kwargs):
+        return self.ema_model(*args, **kwargs)
 
 
         
