@@ -62,7 +62,7 @@ def test_EMA():
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
 
-    ema = EMA(model)
+    ema = EMA(model, decay=0.99)
     ema.add_to_optimizer_post_step_hook(optimizer)
 
     epochs = 5
