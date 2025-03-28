@@ -132,4 +132,5 @@ dmypy.json
 .pyre/
 
 data/
-ckpt/DDPM/
+ckpt/PPO/
+videos/
