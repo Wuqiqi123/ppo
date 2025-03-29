@@ -11,7 +11,7 @@ class Actor(nn.Module):
         self.proj_in = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
             nn.ReLU(), 
-            nn.Dropout(dropout),
+            # nn.Dropout(dropout),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU()
         )
@@ -37,7 +37,7 @@ class Actor(nn.Module):
         '''
         x = self.proj_in(state)
         x = self.action_head(x)
-        return F.softmax(x, dim=-1)  # Normalize logits to probabilities
+        return F.softmax(x, dim=-1)
 
 class Critic(nn.Module):
     def __init__(self, state_dim, hidden_dim, dim_pred = 1, dropout = 0.1):
@@ -46,7 +46,7 @@ class Critic(nn.Module):
         self.proj_in = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
             nn.ReLU(), 
-            nn.Dropout(dropout),
+            # nn.Dropout(dropout),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU()
         )
