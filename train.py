@@ -33,7 +33,7 @@ class PPOAgent:
                 actor_hidden_dim = 64,
                 critic_hidden_dim = 256,
                 ppo_clip = 0.2,
-                ppo_epochs = 4,
+                ppo_epochs = 2,
                 ppo_batch_size = 64,
                 ppo_eps = 0.1,
                 gamma = 0.98,
@@ -122,7 +122,7 @@ if __name__ == "__main__":
             env = env,
             video_folder = "./videos",
             name_prefix = 'video',
-            episode_trigger = lambda eps_num: eps_num % 500 == 0,
+            episode_trigger = lambda eps_num: eps_num % 100 == 0,
             disable_logger = True
         )
 
@@ -140,7 +140,7 @@ if __name__ == "__main__":
         while not done:
             action = agent.take_action(state)
             next_state, reward, terminated, truncated, info = env.step(action)
-            buffer = Buffer(state, action, reward, next_state, done)
+            buffer = Buffer(state, action, reward, next_state, terminated)
             replay_buffer.append(buffer)
             state = next_state
             done = terminated or truncated
