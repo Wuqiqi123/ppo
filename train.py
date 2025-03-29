@@ -33,9 +33,9 @@ class PPOAgent:
                 actor_hidden_dim = 64,
                 critic_hidden_dim = 256,
                 ppo_clip = 0.2,
-                ppo_epochs = 2,
+                ppo_epochs = 10,
                 ppo_batch_size = 64,
-                ppo_eps = 0.1,
+                ppo_eps = 0.2,
                 gamma = 0.98,
                 gae_lambda = 0.95,
                 entropy_coef = 0.01):
@@ -86,6 +86,8 @@ class PPOAgent:
         states = self.to_tensor(states)
         actions = self.to_tensor(actions, dtype=torch.long).view(-1, 1)
         rewards = self.to_tensor(rewards).view(-1, 1)
+        rewards = (rewards + 10) / 10
+        # rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-7)
         next_states = self.to_tensor(next_states)
         dones = self.to_tensor(dones).view(-1, 1)
         old_log_probs = torch.log(self.actor(states).gather(1, actions)).detach()
@@ -116,7 +118,7 @@ if __name__ == "__main__":
     max_timesteps = 1000
 
     # Initialise the environment
-    env = gym.make("LunarLander-v3", render_mode="rgb_array")
+    env = gym.make("CartPole-v1", render_mode="rgb_array")
 
     env = gym.wrappers.RecordVideo(
             env = env,

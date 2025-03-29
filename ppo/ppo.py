@@ -5,28 +5,26 @@ from torch.distributions import Categorical
 
 
 class Actor(nn.Module):
-    def __init__(self, state_dim, num_actions, hidden_dim, dropout = 0.1):
+    def __init__(self, state_dim, num_actions, hidden_dim = 64):
         super(Actor, self).__init__()
         
         self.proj_in = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
-            nn.ReLU(), 
-            # nn.Dropout(dropout),
+            nn.Tanh(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU()
+            nn.Tanh()
         )
 
         self.action_head = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
             nn.Linear(hidden_dim, num_actions), 
+            nn.Softmax(dim=-1)
         )
 
     @torch.no_grad()
-    def forward_eval(self, *args, **kwargs):
+    def forward_eval(self, state):
         training = self.training
         self.eval()
-        out = self.forward(*args, **kwargs)
+        out = self.forward(state)
         self.train(training)
         return out
     
@@ -36,19 +34,18 @@ class Actor(nn.Module):
             return: [batch_size, num_actions]
         '''
         x = self.proj_in(state)
-        x = self.action_head(x)
-        return F.softmax(x, dim=-1)
+        return self.action_head(x)
+    
 
 class Critic(nn.Module):
-    def __init__(self, state_dim, hidden_dim, dim_pred = 1, dropout = 0.1):
+    def __init__(self, state_dim, hidden_dim = 64, dim_pred = 1):
         super(Critic, self).__init__()
         
         self.proj_in = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
-            nn.ReLU(), 
-            # nn.Dropout(dropout),
+            nn.Tanh(), 
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU()
+            nn.Tanh()
         )
 
         self.value_head = nn.Linear(hidden_dim, dim_pred)
