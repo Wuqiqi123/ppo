@@ -14,7 +14,7 @@ from ppo.ppo import Actor, Critic
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-Buffer = namedtuple('Buffer', ['states', 'actions', 'reward', 'next_state', 'action_log_prob', 'done'])
+Buffer = namedtuple('Buffer', ['states', 'actions', 'reward', 'next_state', 'done', 'action_log_prob'])
 
 class ExperienceDataset(torch.utils.data.Dataset):
     def __init__(self, data):
@@ -71,8 +71,8 @@ class PPOAgent:
         return action.item(), action_log_prob
 
 
-    def compute_advantage(gamma, lmbda, td_delta):
-        td_delta = td_delta.detach().numpy()
+    def compute_advantage(self, gamma, lmbda, td_delta):
+        td_delta = td_delta.cpu().detach().numpy()
         advantage_list = []
         advantage = 0.0
         for delta in td_delta[::-1]:
@@ -81,31 +81,38 @@ class PPOAgent:
         advantage_list.reverse()
         return torch.tensor(advantage_list, dtype=torch.float)
     
-    def to_tensor(self, data):
-        return torch.tensor(data, device=device, dtype=torch.float)
+    def to_tensor(self, data, dtype=torch.float):
+        return torch.tensor(data, device=device, dtype=dtype)
 
     def optimize(self, replay_buffer):
-        (states, actions, rewards, next_states, action_log_probs, dones) = zip(*replay_buffer)
+        (states, actions, rewards, next_states, dones, action_log_probs) = zip(*replay_buffer)
 
         states = self.to_tensor(states)
-        actions = self.to_tensor(actions)
-        rewards = self.to_tensor(rewards)
+        actions = self.to_tensor(actions, dtype=torch.long).view(-1, 1)
+        rewards = self.to_tensor(rewards).view(-1, 1)
         next_states = self.to_tensor(next_states)
-        action_log_probs = self.to_tensor(action_log_probs)
-        dones = self.to_tensor(dones)
+        dones = self.to_tensor(dones).view(-1, 1)
+        old_log_probs = torch.stack(list(action_log_probs), dim=0).view(-1, 1).detach()
 
-        import pdb; pdb.set_trace()
         td_target = rewards + self.gamma * self.target_critic(next_states) * (1 - dones)
 
         td_delta = td_target - self.critic(states)
-        advantages = self.compute_advantage(self.gamma, self.gae_lambda, td_delta)
+        advantages = self.compute_advantage(self.gamma, self.gae_lambda, td_delta).to(device)
 
-        dataset = ExperienceDataset(zip(states, actions, rewards, next_states, action_log_probs, advantages, dones))
-
-        dl = torch.utils.data.DataLoader(dataset, batch_size = self.ppo_batch_size, shuffle = True)
         for _ in range(self.ppo_epochs):
-            for i, (states, actions, old_log_probs, rewards, old_values) in enumerate(dl):
-                pass
+            log_probs = torch.log(self.actor(states).gather(1, actions))
+            ratio = torch.exp(log_probs - old_log_probs)
+            surr1 = ratio * advantages
+            surr2 = torch.clamp(ratio, 1 - self.ppo_eps, 1 + self.ppo_eps) * advantages
+            actor_loss = torch.mean(-torch.min(surr1, surr2))
+            critic_loss = torch.mean(F.mse_loss(self.critic(states), td_target.detach()))
+            self.optimizer_actor.zero_grad()
+            self.optimizer_critic.zero_grad()
+            actor_loss.backward()
+            critic_loss.backward()
+            self.optimizer_actor.step()
+            self.optimizer_critic.step()
+
 
 
     
@@ -134,17 +141,17 @@ if __name__ == "__main__":
 
     for eps in tqdm(range(num_episodes), desc = 'episodes'):
         state, info = env.reset()
-        for timestep in range(max_timesteps):
-            
-            done = False
-            while not done:
-                action, action_log_prob = agent.take_action(state)
-                next_state, reward, done, truncated, info = env.step(action)
-                buffer = Buffer(state, action, reward, next_state, action_log_prob, done)
-                replay_buffer.append(buffer)
-                state = next_state
+        done = False
+        while not done:
+            action, action_log_prob = agent.take_action(state)
+            next_state, reward, done, truncated, info = env.step(action)
+            buffer = Buffer(state, action, reward, next_state, done, action_log_prob)
+            replay_buffer.append(buffer)
+            state = next_state
 
-            agent.optimize(replay_buffer)
+        agent.optimize(replay_buffer)
+            
+
 
     # Close the environment
     env.close()
