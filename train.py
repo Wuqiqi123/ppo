@@ -113,7 +113,7 @@ if __name__ == "__main__":
     max_timesteps = 1000
 
     # Initialise the environment
-    env = gym.make("CartPole-v1", render_mode="rgb_array")
+    env = gym.make("LunarLander-v3", render_mode="rgb_array")
 
     env = gym.wrappers.RecordVideo(
             env = env,
