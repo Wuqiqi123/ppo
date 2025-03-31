@@ -66,16 +66,6 @@ class PPOAgent:
         action = action_dist.sample()
         return action.item()
 
-
-    def compute_advantage(self, gamma, lmbda, td_delta):
-        td_delta = td_delta.cpu().detach().numpy()
-        advantage_list = []
-        advantage = 0.0
-        for delta in td_delta[::-1]:
-            advantage = gamma * lmbda * advantage + delta
-            advantage_list.append(advantage)
-        advantage_list.reverse()
-        return torch.tensor(advantage_list, dtype=torch.float)
     
     def to_tensor(self, data, dtype=torch.float):
         return torch.tensor(data, device=device, dtype=dtype)
@@ -95,7 +85,12 @@ class PPOAgent:
         td_target = rewards + self.gamma * self.target_critic(next_states) * (1.0 - dones)
 
         td_delta = td_target - self.critic(states)
-        advantages = self.compute_advantage(self.gamma, self.gae_lambda, td_delta).to(device)
+        advantages = torch.zeros_like(td_delta)
+        advantages[-1] = td_delta[-1]
+        for t in range(states.shape[0] - 2, -1, -1):
+            advantages[t] = td_delta[t] + self.gamma * self.gae_lambda * advantages[t + 1]
+        
+        advantages.detach_()
 
         for _ in range(self.ppo_epochs):
             log_probs = torch.log(self.actor(states).gather(1, actions))
