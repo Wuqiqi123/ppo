@@ -6,7 +6,8 @@ An implementation of PPO
 sudo apt-get install swig
 ```
 
-
+### CartPole-v1
+![](doc/CartPole-v1.gif)
 
 ```
 @misc{schulman2017trustregionpolicyoptimization,
